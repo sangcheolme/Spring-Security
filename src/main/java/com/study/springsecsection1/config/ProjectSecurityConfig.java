@@ -21,7 +21,10 @@ import org.springframework.web.cors.CorsConfiguration;
 
 import com.study.springsecsection1.exceptionhandling.CustomAccessDeniedHandler;
 import com.study.springsecsection1.exceptionhandling.CustomBasicAuthenticationEntryPoint;
+import com.study.springsecsection1.filter.AuthoritiesLoggingAfterFilter;
+import com.study.springsecsection1.filter.AuthoritiesLoggingAtFilter;
 import com.study.springsecsection1.filter.CsrfCookieFilter;
+import com.study.springsecsection1.filter.RequestValidationBeforeFilter;
 
 @Profile("!prod")
 @Configuration
@@ -45,9 +48,16 @@ public class ProjectSecurityConfig {
                         .ignoringRequestMatchers("/contact", "/register")
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+                .addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class)
+                .addFilterAfter(new AuthoritiesLoggingAfterFilter(), BasicAuthenticationFilter.class)
+                .addFilterAt(new AuthoritiesLoggingAtFilter(), BasicAuthenticationFilter.class)
                 .requiresChannel(rcc -> rcc.anyRequest().requiresInsecure()) // Only HTTP
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers("/myAccount", "/myBalance", "/myLoans", "/myCards", "/user").authenticated()
+                        .requestMatchers("/myAccount").hasRole("USER")
+                        .requestMatchers("/myBalance").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/myLoans").hasRole("USER")
+                        .requestMatchers("/myCards").hasRole("USER")
+                        .requestMatchers("/user").authenticated()
                         .requestMatchers("/notices", "/contact", "/register", "/error", "/invalidSession").permitAll());
         http.formLogin(withDefaults());
         http.httpBasic(hbc -> hbc.authenticationEntryPoint(new CustomBasicAuthenticationEntryPoint()));
